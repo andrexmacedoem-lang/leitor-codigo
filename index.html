@@ -5,25 +5,61 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Avarias</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script type="module">
+import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/library@latest/esm/index.js";
+
+let codeReader = new BrowserMultiFormatReader();
+
+window.abrirScanner = function () {
+    const preview = document.getElementById("video");
+    document.getElementById("scanner").style.display = "block";
+
+    codeReader
+        .listVideoInputDevices()
+        .then((videoDevices) => {
+            const deviceId = videoDevices.length > 1 
+                ? videoDevices[1].deviceId 
+                : videoDevices[0].deviceId;
+
+            codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
+                if (result) {
+                    document.getElementById("codigo").value = result.text;
+
+                    codeReader.reset();
+                    document.getElementById("scanner").style.display = "none";
+                }
+            });
+        })
+        .catch((err) => alert("Erro ao acessar câmera: " + err));
+};
+
+window.salvar = function () {
+    const c = document.getElementById("codigo").value;
+    const r = document.getElementById("responsavel").value;
+    const t = document.getElementById("tipo").value;
+
+    if (!c || !r || !t) return alert("Preencha tudo.");
+
+    let bloco = document.createElement("div");
+    bloco.innerHTML = `
+        <p><strong>Código:</strong> ${c}<br>
+        <strong>Responsável:</strong> ${r}<br>
+        <strong>Tipo:</strong> ${t}</p>
+        <hr>
+    `;
+    document.getElementById("registros").appendChild(bloco);
+
+    document.getElementById("codigo").value = "";
+    document.getElementById("responsavel").value = "";
+    document.getElementById("tipo").value = "";
+};
+</script>
 
 <style>
-    body { font-family: Arial; margin: 20px; }
-    input, select { width: 100%; padding: 10px; font-size: 18px; margin-top: 5px; }
-    button { width: 100%; padding: 12px; margin-top: 15px; font-size: 18px; }
-    #scanner-container { 
-        width: 100%; 
-        height: 300px; 
-        border: 2px solid #444; 
-        margin-top: 15px; 
-        display: none; 
-        position: relative;
-    }
-    #scanner-container video {
-        width: 100%; 
-        height: 100%; 
-        object-fit: cover;
-    }
+body { font-family: Arial; margin: 20px; }
+input, select, button { width: 100%; padding: 12px; font-size: 18px; margin-top: 10px; }
+#scanner { display: none; margin-top: 15px; }
+video { width: 100%; border: 2px solid #555; border-radius: 8px; }
 </style>
 
 </head>
@@ -36,7 +72,9 @@
 
 <button onclick="abrirScanner()">📷 Ler Código de Barras</button>
 
-<div id="scanner-container"></div>
+<div id="scanner">
+    <video id="video"></video>
+</div>
 
 <label>Responsabilidade</label>
 <select id="responsavel">
@@ -57,63 +95,7 @@
 <h3>Registros</h3>
 <div id="registros"></div>
 
-<script>
-function abrirScanner() {
-    const container = document.getElementById("scanner-container");
-    container.style.display = "block";
-
-    Quagga.init({
-        inputStream: {
-            type: "LiveStream",
-            target: container,
-            constraints: {
-                facingMode: "environment"  // câmera traseira
-            }
-        },
-        decoder: {
-            readers: ["code_128_reader", "code_39_reader", "ean_reader"]
-        }
-    }, function(err) {
-        if (err) {
-            alert("Erro ao acessar a câmera: " + err);
-            return;
-        }
-        Quagga.start();
-    });
-
-    Quagga.onDetected(function(result) {
-        document.getElementById("codigo").value = result.codeResult.code;
-
-        Quagga.stop();
-        container.style.display = "none";
-    });
-}
-
-function salvar() {
-    const c = document.getElementById("codigo").value;
-    const r = document.getElementById("responsavel").value;
-    const t = document.getElementById("tipo").value;
-
-    if (!c || !r || !t) {
-        alert("Preencha tudo!");
-        return;
-    }
-
-    let div = document.createElement("div");
-    div.style.marginTop = "10px";
-    div.innerHTML = `
-        <strong>Código:</strong> ${c}<br>
-        <strong>Responsável:</strong> ${r}<br>
-        <strong>Avaria:</strong> ${t}<br><hr>
-    `;
-    document.getElementById("registros").appendChild(div);
-
-    document.getElementById("codigo").value = "";
-    document.getElementById("responsavel").value = "";
-    document.getElementById("tipo").value = "";
-}
-</script>
-
 </body>
 </html>
+
 

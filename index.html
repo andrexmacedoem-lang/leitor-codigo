@@ -9,7 +9,7 @@
     body { font-family: Arial; margin: 20px; }
     label { font-weight: bold; }
     button { margin-top: 10px; padding: 12px; font-size: 18px; width: 100%; }
-    iframe { width: 100%; height: 420px; border: none; display: none; }
+    iframe { width: 100%; height: 450px; border: none; display: none; }
     #registros div { 
         background:#f0f0f0; padding:10px; margin-top:10px; border-radius:8px; 
     }
@@ -24,8 +24,8 @@
 
 <button onclick="abrirLeitor()">📷 Ler Código de Barras</button>
 
-<!-- Leitor UNIVERSAL -->
-<iframe id="scanner" src=""></iframe>
+<!-- Leitor com câmera correta -->
+<iframe id="scanner"></iframe>
 
 <br><br>
 
@@ -53,23 +53,21 @@
 <div id="registros"></div>
 
 <script>
-// Abrir leitorZXing universal (NUNCA dá incompatibilidade)
+// abre o leitor ZXing COM CÂMERA
 function abrirLeitor() {
     const frame = document.getElementById("scanner");
 
-    frame.src = "https://zxing.org/w/decode.jspx";
+    frame.src = "https://zxing.org/w/scanner";  // ESTA É A URL CERTA DA CÂMERA
     frame.style.display = "block";
 
-    // escuta retorno
     window.addEventListener("message", function (e) {
-        if (e.data && e.data.text) {
-            document.getElementById("codigo").value = e.data.text;
+        if (e.data && e.data.result) {
+            document.getElementById("codigo").value = e.data.result.text;
             frame.style.display = "none";
         }
     });
 }
 
-// SALVAR REGISTRO NA LISTA
 function salvarRegistro() {
     const codigo = document.getElementById("codigo").value;
     const resp = document.getElementById("responsavel").value;
@@ -89,7 +87,6 @@ function salvarRegistro() {
 
     document.getElementById("registros").appendChild(div);
 
-    // limpa campos
     document.getElementById("codigo").value = "";
     document.getElementById("responsavel").value = "";
     document.getElementById("tipo").value = "";
@@ -98,4 +95,5 @@ function salvarRegistro() {
 
 </body>
 </html>
+
 

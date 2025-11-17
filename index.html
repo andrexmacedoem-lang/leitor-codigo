@@ -1,128 +1,107 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Controle de Avarias</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Avarias</title>
 
-  <style>
+<style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
-      padding: 20px;
+        font-family: Arial, sans-serif;
+        margin: 20px;
     }
-    .container {
-      max-width: 480px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    button {
-      margin-top: 12px;
-      width: 100%;
-      padding: 12px;
-      font-size: 18px;
-      border-radius: 10px;
-      background: #007bff;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #005fcc;
-    }
-    select, input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 8px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 16px;
+    label {
+        font-weight: bold;
     }
     #preview {
-      width: 100%;
-      display: none;
-      margin-top: 15px;
-      border-radius: 10px;
+        width: 100%;
+        max-height: 300px;
+        margin-top: 10px;
+        display: none;
+        border: 2px solid #000;
+        border-radius: 8px;
     }
-  </style>
+    button {
+        margin-top: 8px;
+        padding: 10px 15px;
+        font-size: 16px;
+    }
+</style>
 </head>
-
 <body>
-  <div class="container">
-    <h2>Controle de Avarias</h2>
 
-    <label>Código do Produto</label>
-    <input id="codigo" type="text" placeholder="Toque para escanear" readonly>
+<h2>📦 Controle de Avarias</h2>
 
-    <button onclick="scan()">📷 Escanear Código de Barras</button>
+<form>
+
+    <label>Código do Produto</label><br>
+    <input type="text" id="codigo" placeholder="Escaneie o código" style="width:100%; padding:8px; font-size:16px;" />
+    <button type="button" onclick="scan()">📷 Ler Código de Barras</button>
 
     <video id="preview"></video>
 
-    <label>Responsabilidade</label>
-    <select id="resp">
-      <option value="">Selecione...</option>
-      <option>Whirlpool</option>
-      <option>Venkon</option>
+    <br><br>
+
+    <label>Responsabilidade</label><br>
+    <select id="responsavel" style="width:100%; padding:8px; font-size:16px;">
+        <option value="">Selecione...</option>
+        <option value="whirlpool">Whirlpool</option>
+        <option value="venkon">Venkon</option>
     </select>
 
-    <label>Tipo de Avaria</label>
-    <select id="tipo">
-      <option value="">Selecione...</option>
-      <option>Embalagem</option>
-      <option>Produto</option>
+    <br><br>
+
+    <label>Tipo de Avaria</label><br>
+    <select id="tipo" style="width:100%; padding:8px; font-size:16px;">
+        <option value="">Selecione...</option>
+        <option value="embalagem">Embalagem</option>
+        <option value="produto">Produto</option>
     </select>
 
-    <button onclick="salvar()">Salvar</button>
+</form>
 
-    <div id="resultado"></div>
-  </div>
+<!-- ZXING LIBRARY -->
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 
-  <!-- ZXING OFFICIAL LIBRARY -->
-  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script>
+async function scan() {
+    const preview = document.getElementById("preview");
+    preview.style.display = "block";
 
-  <script>
-    async function scan() {
-      const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
-      const preview = document.getElementById("preview");
-      preview.style.display = "block";
-
-      const cameras = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-      if (cameras.length === 0) {
+    // Lista todas as câmeras do dispositivo
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    if (devices.length === 0) {
         alert("Nenhuma câmera encontrada");
         return;
-      }
+    }
 
-      codeReader.decodeFromVideoDevice(cameras[0].deviceId, "preview", (result, err) => {
+    // Configura formatos compatíveis (incluindo o da Whirlpool)
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.CODE_39,
+        ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.CODE_128,
+        ZXing.BarcodeFormat.QR_CODE
+    ]);
+
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+    const reader = new ZXing.BrowserMultiFormatReader(hints);
+
+    // Força câmera traseira (a frontal não consegue focar)
+    const backCamera = devices.find(d => d.label.toLowerCase().includes("back")) || devices[0];
+
+    reader.decodeFromVideoDevice(backCamera.deviceId, "preview", (result, err) => {
         if (result) {
-          document.getElementById("codigo").value = result.text;
-          codeReader.reset();
-          preview.style.display = "none";
+            document.getElementById("codigo").value = result.text;
+            reader.reset();
+            preview.style.display = "none";
         }
-      });
-    }
-
-    function salvar() {
-      let codigo = document.getElementById("codigo").value;
-      let resp = document.getElementById("resp").value;
-      let tipo = document.getElementById("tipo").value;
-
-      if (!codigo || !resp || !tipo) {
-        alert("Preencha tudo");
-        return;
-      }
-
-      document.getElementById("resultado").innerHTML = `
-        <p><strong>Registro salvo!</strong><br>
-        Código: ${codigo}<br>
-        Resp: ${resp}<br>
-        Tipo: ${tipo}</p>
-      `;
-    }
-  </script>
+    });
+}
+</script>
 
 </body>
 </html>
+
 

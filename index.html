@@ -6,98 +6,86 @@
 <title>Controle de Avarias</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-    }
-    label {
-        font-weight: bold;
-    }
-    #preview {
-        width: 100%;
-        max-height: 300px;
-        margin-top: 10px;
-        display: none;
-        border: 2px solid #000;
-        border-radius: 8px;
-    }
-    button {
-        margin-top: 8px;
-        padding: 10px 15px;
-        font-size: 16px;
-    }
+    body { font-family: Arial; margin: 20px; }
+    label { font-weight: bold; }
+    video { width: 100%; border: 2px solid #000; border-radius: 8px; display: none; }
+    button { margin-top: 10px; padding: 12px; font-size: 18px; width: 100%; }
 </style>
 </head>
 <body>
 
 <h2>📦 Controle de Avarias</h2>
 
-<form>
+<label>Código do Produto</label>
+<input type="text" id="codigo" style="width:100%; padding:8px; font-size:18px;" placeholder="Escaneie o código">
 
-    <label>Código do Produto</label><br>
-    <input type="text" id="codigo" placeholder="Escaneie o código" style="width:100%; padding:8px; font-size:16px;" />
-    <button type="button" onclick="scan()">📷 Ler Código de Barras</button>
+<button onclick="startScanner()">📷 Ler Código de Barras</button>
 
-    <video id="preview"></video>
+<video id="camera" playsinline></video>
 
-    <br><br>
+<br><br>
 
-    <label>Responsabilidade</label><br>
-    <select id="responsavel" style="width:100%; padding:8px; font-size:16px;">
-        <option value="">Selecione...</option>
-        <option value="whirlpool">Whirlpool</option>
-        <option value="venkon">Venkon</option>
-    </select>
+<label>Responsabilidade</label>
+<select id="responsavel" style="width:100%; padding:8px; font-size:16px;">
+    <option value="">Selecione...</option>
+    <option value="whirlpool">Whirlpool</option>
+    <option value="venkon">Venkon</option>
+</select>
 
-    <br><br>
+<br><br>
 
-    <label>Tipo de Avaria</label><br>
-    <select id="tipo" style="width:100%; padding:8px; font-size:16px;">
-        <option value="">Selecione...</option>
-        <option value="embalagem">Embalagem</option>
-        <option value="produto">Produto</option>
-    </select>
-
-</form>
-
-<!-- ZXING LIBRARY -->
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<label>Tipo de Avaria</label>
+<select id="tipo" style="width:100%; padding:8px; font-size:16px;">
+    <option value="">Selecione...</option>
+    <option value="embalagem">Embalagem</option>
+    <option value="produto">Produto</option>
+</select>
 
 <script>
-async function scan() {
-    const preview = document.getElementById("preview");
-    preview.style.display = "block";
+let stream;
 
-    // Lista todas as câmeras do dispositivo
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    if (devices.length === 0) {
-        alert("Nenhuma câmera encontrada");
+async function startScanner() {
+    const video = document.getElementById("camera");
+    
+    // Solicita câmera traseira
+    stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+    });
+
+    video.srcObject = stream;
+    video.style.display = "block";
+    await video.play();
+
+    scanFrame();
+}
+
+async function scanFrame() {
+    const video = document.getElementById("camera");
+
+    if (!('BarcodeDetector' in window)) {
+        alert("Seu celular não é compatível com leitura nativa. Vamos colocar outro método.");
         return;
     }
 
-    // Configura formatos compatíveis (incluindo o da Whirlpool)
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXing.BarcodeFormat.CODE_39,
-        ZXing.BarcodeFormat.CODE_93,
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.QR_CODE
-    ]);
-
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-
-    const reader = new ZXing.BrowserMultiFormatReader(hints);
-
-    // Força câmera traseira (a frontal não consegue focar)
-    const backCamera = devices.find(d => d.label.toLowerCase().includes("back")) || devices[0];
-
-    reader.decodeFromVideoDevice(backCamera.deviceId, "preview", (result, err) => {
-        if (result) {
-            document.getElementById("codigo").value = result.text;
-            reader.reset();
-            preview.style.display = "none";
-        }
+    const detector = new BarcodeDetector({
+        formats: ["code_39", "code_128", "code_93"]
     });
+
+    try {
+        const barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+            document.getElementById("codigo").value = barcodes[0].rawValue;
+
+            // Para a câmera
+            stream.getTracks().forEach(track => track.stop());
+            video.style.display = "none";
+            return;
+        }
+    } catch (e) {
+        console.log("Erro detector:", e);
+    }
+
+    requestAnimationFrame(scanFrame);
 }
 </script>
 

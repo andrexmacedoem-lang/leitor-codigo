@@ -5,11 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Avarias</title>
 
+<!-- Biblioteca ZXing que lê qualquer código -->
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
+
 <style>
     body { font-family: Arial; margin: 20px; }
     label { font-weight: bold; }
     video { width: 100%; border: 2px solid #000; border-radius: 8px; display: none; }
     button { margin-top: 10px; padding: 12px; font-size: 18px; width: 100%; }
+    #registros div { 
+        background:#f0f0f0; padding:10px; margin-top:10px; border-radius:8px; 
+    }
 </style>
 </head>
 <body>
@@ -19,17 +25,17 @@
 <label>Código do Produto</label>
 <input type="text" id="codigo" style="width:100%; padding:8px; font-size:18px;" placeholder="Escaneie o código">
 
-<button onclick="startScanner()">📷 Ler Código de Barras</button>
+<button onclick="iniciarLeitor()">📷 Ler Código de Barras</button>
 
-<video id="camera" playsinline></video>
+<video id="preview" playsinline></video>
 
 <br><br>
 
 <label>Responsabilidade</label>
 <select id="responsavel" style="width:100%; padding:8px; font-size:16px;">
     <option value="">Selecione...</option>
-    <option value="whirlpool">Whirlpool</option>
-    <option value="venkon">Venkon</option>
+    <option value="Whirlpool">Whirlpool</option>
+    <option value="Venkon">Venkon</option>
 </select>
 
 <br><br>
@@ -37,59 +43,72 @@
 <label>Tipo de Avaria</label>
 <select id="tipo" style="width:100%; padding:8px; font-size:16px;">
     <option value="">Selecione...</option>
-    <option value="embalagem">Embalagem</option>
-    <option value="produto">Produto</option>
+    <option value="Embalagem">Embalagem</option>
+    <option value="Produto">Produto</option>
 </select>
 
+<br><br>
+
+<button onclick="salvarRegistro()">💾 Salvar</button>
+
+<h3>Registros Salvos</h3>
+<div id="registros"></div>
+
 <script>
+let codeReader;
 let stream;
 
-async function startScanner() {
-    const video = document.getElementById("camera");
-    
-    // Solicita câmera traseira
-    stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-    });
-
-    video.srcObject = stream;
+// 📷 INICIAR LEITOR UNIVERSAL ZXING
+async function iniciarLeitor() {
+    const video = document.getElementById('preview');
     video.style.display = "block";
-    await video.play();
 
-    scanFrame();
+    codeReader = new ZXing.BrowserMultiFormatReader();
+
+    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+
+    const camera = devices[devices.length - 1].deviceId; // traseira
+
+    codeReader.decodeFromVideoDevice(camera, 'preview', (resultado, err) => {
+        if (resultado) {
+            document.getElementById("codigo").value = resultado.text;
+
+            // parar câmera
+            codeReader.reset();
+            video.style.display = "none";
+        }
+    });
 }
 
-async function scanFrame() {
-    const video = document.getElementById("camera");
+// 💾 SALVAR REGISTRO NA TELA
+function salvarRegistro() {
+    const codigo = document.getElementById("codigo").value;
+    const resp = document.getElementById("responsavel").value;
+    const tipo = document.getElementById("tipo").value;
 
-    if (!('BarcodeDetector' in window)) {
-        alert("Seu celular não é compatível com leitura nativa. Vamos colocar outro método.");
+    if (!codigo || !resp || !tipo) {
+        alert("Preencha todos os campos.");
         return;
     }
 
-    const detector = new BarcodeDetector({
-        formats: ["code_39", "code_128", "code_93"]
-    });
+    const div = document.createElement("div");
+    div.innerHTML = `
+        <strong>Código:</strong> ${codigo}<br>
+        <strong>Responsável:</strong> ${resp}<br>
+        <strong>Avaria:</strong> ${tipo}
+    `;
 
-    try {
-        const barcodes = await detector.detect(video);
-        if (barcodes.length > 0) {
-            document.getElementById("codigo").value = barcodes[0].rawValue;
+    document.getElementById("registros").appendChild(div);
 
-            // Para a câmera
-            stream.getTracks().forEach(track => track.stop());
-            video.style.display = "none";
-            return;
-        }
-    } catch (e) {
-        console.log("Erro detector:", e);
-    }
-
-    requestAnimationFrame(scanFrame);
+    // limpa campos
+    document.getElementById("codigo").value = "";
+    document.getElementById("responsavel").value = "";
+    document.getElementById("tipo").value = "";
 }
 </script>
 
 </body>
 </html>
+
 
 

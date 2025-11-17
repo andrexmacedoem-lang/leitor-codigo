@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Avarias</title>
 
-<!-- Biblioteca ZXing que lê qualquer código -->
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
-
 <style>
     body { font-family: Arial; margin: 20px; }
     label { font-weight: bold; }
-    video { width: 100%; border: 2px solid #000; border-radius: 8px; display: none; }
     button { margin-top: 10px; padding: 12px; font-size: 18px; width: 100%; }
+    iframe { width: 100%; height: 420px; border: none; display: none; }
     #registros div { 
         background:#f0f0f0; padding:10px; margin-top:10px; border-radius:8px; 
     }
@@ -25,9 +22,10 @@
 <label>Código do Produto</label>
 <input type="text" id="codigo" style="width:100%; padding:8px; font-size:18px;" placeholder="Escaneie o código">
 
-<button onclick="iniciarLeitor()">📷 Ler Código de Barras</button>
+<button onclick="abrirLeitor()">📷 Ler Código de Barras</button>
 
-<video id="preview" playsinline></video>
+<!-- Leitor UNIVERSAL -->
+<iframe id="scanner" src=""></iframe>
 
 <br><br>
 
@@ -55,32 +53,23 @@
 <div id="registros"></div>
 
 <script>
-let codeReader;
-let stream;
+// Abrir leitorZXing universal (NUNCA dá incompatibilidade)
+function abrirLeitor() {
+    const frame = document.getElementById("scanner");
 
-// 📷 INICIAR LEITOR UNIVERSAL ZXING
-async function iniciarLeitor() {
-    const video = document.getElementById('preview');
-    video.style.display = "block";
+    frame.src = "https://zxing.org/w/decode.jspx";
+    frame.style.display = "block";
 
-    codeReader = new ZXing.BrowserMultiFormatReader();
-
-    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-
-    const camera = devices[devices.length - 1].deviceId; // traseira
-
-    codeReader.decodeFromVideoDevice(camera, 'preview', (resultado, err) => {
-        if (resultado) {
-            document.getElementById("codigo").value = resultado.text;
-
-            // parar câmera
-            codeReader.reset();
-            video.style.display = "none";
+    // escuta retorno
+    window.addEventListener("message", function (e) {
+        if (e.data && e.data.text) {
+            document.getElementById("codigo").value = e.data.text;
+            frame.style.display = "none";
         }
     });
 }
 
-// 💾 SALVAR REGISTRO NA TELA
+// SALVAR REGISTRO NA LISTA
 function salvarRegistro() {
     const codigo = document.getElementById("codigo").value;
     const resp = document.getElementById("responsavel").value;
@@ -109,6 +98,4 @@ function salvarRegistro() {
 
 </body>
 </html>
-
-
 

@@ -3,80 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Leitor de Código de Barras</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <title>Controle de Avarias</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f2f2f2;
+      margin: 0;
       padding: 20px;
-      text-align: center;
     }
-    #reader {
-      width: 100%;
-      max-width: 400px;
+    .container {
+      max-width: 480px;
       margin: auto;
+      background: #fff;
+      padding: 20px;
       border-radius: 12px;
-      overflow: hidden;
-      background: white;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    #result {
-      margin-top: 20px;
-      font-size: 22px;
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    label {
       font-weight: bold;
-      color: #333;
+      margin-top: 12px;
+      display: block;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
     }
     button {
       margin-top: 20px;
-      padding: 12px 20px;
-      font-size: 16px;
+      width: 100%;
+      padding: 12px;
       background: #007bff;
       border: none;
       color: white;
-      border-radius: 8px;
+      font-size: 18px;
+      border-radius: 10px;
       cursor: pointer;
     }
     button:hover {
       background: #005fcc;
     }
+    .resultado {
+      background: #e7ffe7;
+      border-left: 4px solid #00a000;
+      padding: 12px;
+      margin-top: 20px;
+      border-radius: 8px;
+      display: none;
+    }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h2>Controle de Avarias</h2>
 
-  <h2>📦 Leitor de Código de Barras</h2>
-  <p>Aponte a câmera para o código de barras</p>
+    <label for="codigo">Código do Produto</label>
+    <input type="text" id="codigo" placeholder="Digite ou escaneie o código" />
 
-  <div id="reader"></div>
+    <label for="resp">Responsabilidade</label>
+    <select id="resp">
+      <option value="">Selecione...</option>
+      <option value="whirlpool">Whirlpool</option>
+      <option value="venkon">Venkon</option>
+    </select>
 
-  <div id="result"></div>
+    <label for="tipo">Tipo de Avaria</label>
+    <select id="tipo">
+      <option value="">Selecione...</option>
+      <option value="embalagem">Embalagem</option>
+      <option value="produto">Produto</option>
+    </select>
 
-  <button onclick="startScanner()">Iniciar Leitura</button>
+    <button onclick="salvar()">Salvar</button>
+
+    <div class="resultado" id="resultado"></div>
+  </div>
 
   <script>
-    let scanner;
+    function salvar() {
+      let codigo = document.getElementById("codigo").value;
+      let resp = document.getElementById("resp").value;
+      let tipo = document.getElementById("tipo").value;
 
-    function startScanner() {
-      if (scanner) {
-        scanner.stop();
+      if (!codigo || !resp || !tipo) {
+        alert("Preencha todos os campos!");
+        return;
       }
 
-      scanner = new Html5Qrcode("reader");
+      let caixa = document.getElementById("resultado");
+      caixa.style.display = "block";
+      caixa.innerHTML = `
+        <strong>Registro salvo!</strong><br>
+        Código: ${codigo}<br>
+        Responsabilidade: ${resp}<br>
+        Tipo: ${tipo}
+      `;
 
-      scanner.start(
-        { facingMode: "environment" }, // câmera traseira
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          document.getElementById("result").innerText = "Código lido: " + decodedText;
-
-          // Aqui você pode enviar para um servidor:
-          // fetch('/api/salvar', { method: 'POST', body: JSON.stringify({codigo: decodedText}) })
-
-          scanner.stop();
-        }
-      );
+      // limpa campos
+      document.getElementById("codigo").value = "";
+      document.getElementById("resp").value = "";
+      document.getElementById("tipo").value = "";
     }
   </script>
-
 </body>
 </html>

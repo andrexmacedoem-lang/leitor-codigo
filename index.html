@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Avarias</title>
 
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f2f2f2;
-      margin: 0;
       padding: 20px;
     }
     .container {
@@ -20,46 +19,33 @@
       border-radius: 12px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    h2 { text-align: center; }
-    label {
-      font-weight: bold;
+    button {
       margin-top: 12px;
-      display: block;
+      width: 100%;
+      padding: 12px;
+      font-size: 18px;
+      border-radius: 10px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
     }
-    input, select {
+    button:hover {
+      background: #005fcc;
+    }
+    select, input {
       width: 100%;
       padding: 10px;
-      margin-top: 6px;
+      margin-top: 8px;
       border: 1px solid #ccc;
       border-radius: 8px;
       font-size: 16px;
     }
-    button {
-      margin-top: 20px;
+    #preview {
       width: 100%;
-      padding: 12px;
-      background: #007bff;
-      border: none;
-      color: white;
-      font-size: 18px;
+      display: none;
+      margin-top: 15px;
       border-radius: 10px;
-      cursor: pointer;
-    }
-    button:hover { background: #005fcc; }
-
-    .resultado {
-      background: #e7ffe7;
-      border-left: 4px solid #00a000;
-      padding: 12px;
-      margin-top: 20px;
-      border-radius: 8px;
-      display: none;
-    }
-
-    #reader {
-      width: 100%;
-      margin-top: 12px;
-      display: none;
     }
   </style>
 </head>
@@ -68,62 +54,53 @@
   <div class="container">
     <h2>Controle de Avarias</h2>
 
-    <!-- Código do Produto -->
-    <label for="codigo">Código do Produto</label>
-    <input type="text" id="codigo" placeholder="Toque para escanear" readonly />
+    <label>Código do Produto</label>
+    <input id="codigo" type="text" placeholder="Toque para escanear" readonly>
 
-    <button type="button" onclick="startScanner()">📷 Escanear Código</button>
+    <button onclick="scan()">📷 Escanear Código de Barras</button>
 
-    <div id="reader"></div>
+    <video id="preview"></video>
 
-    <!-- Responsabilidade -->
-    <label for="resp">Responsabilidade</label>
+    <label>Responsabilidade</label>
     <select id="resp">
       <option value="">Selecione...</option>
-      <option value="Whirlpool">Whirlpool</option>
-      <option value="Venkon">Venkon</option>
+      <option>Whirlpool</option>
+      <option>Venkon</option>
     </select>
 
-    <!-- Tipo de Avaria -->
-    <label for="tipo">Tipo de Avaria</label>
+    <label>Tipo de Avaria</label>
     <select id="tipo">
       <option value="">Selecione...</option>
-      <option value="Embalagem">Embalagem</option>
-      <option value="Produto">Produto</option>
+      <option>Embalagem</option>
+      <option>Produto</option>
     </select>
 
     <button onclick="salvar()">Salvar</button>
 
-    <div class="resultado" id="resultado"></div>
+    <div id="resultado"></div>
   </div>
 
-  <!-- Leitor moderno de código de barras / QRCode -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- ZXING OFFICIAL LIBRARY -->
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
   <script>
-    let scanner;
+    async function scan() {
+      const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+      const preview = document.getElementById("preview");
+      preview.style.display = "block";
 
-    function startScanner() {
-      const readerDiv = document.getElementById("reader");
-      readerDiv.style.display = "block";
-
-      if (scanner) {
-        scanner.stop();
+      const cameras = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+      if (cameras.length === 0) {
+        alert("Nenhuma câmera encontrada");
+        return;
       }
 
-      scanner = new Html5Qrcode("reader");
-
-      scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        decodedText => {
-          document.getElementById("codigo").value = decodedText;
-          scanner.stop();
-          readerDiv.style.display = "none";
-        },
-        errorMessage => {}
-      ).catch(err => {
-        alert("Erro ao acessar câmera: " + err);
+      codeReader.decodeFromVideoDevice(cameras[0].deviceId, "preview", (result, err) => {
+        if (result) {
+          document.getElementById("codigo").value = result.text;
+          codeReader.reset();
+          preview.style.display = "none";
+        }
       });
     }
 
@@ -133,22 +110,16 @@
       let tipo = document.getElementById("tipo").value;
 
       if (!codigo || !resp || !tipo) {
-        alert("Preencha todos os campos!");
+        alert("Preencha tudo");
         return;
       }
 
-      let box = document.getElementById("resultado");
-      box.style.display = "block";
-      box.innerHTML = `
-        <strong>Registro salvo!</strong><br>
+      document.getElementById("resultado").innerHTML = `
+        <p><strong>Registro salvo!</strong><br>
         Código: ${codigo}<br>
-        Responsabilidade: ${resp}<br>
-        Tipo: ${tipo}
+        Resp: ${resp}<br>
+        Tipo: ${tipo}</p>
       `;
-
-      document.getElementById("codigo").value = "";
-      document.getElementById("resp").value = "";
-      document.getElementById("tipo").value = "";
     }
   </script>
 

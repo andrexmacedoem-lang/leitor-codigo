@@ -5,86 +5,107 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Avarias</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
 <style>
     body { font-family: Arial; margin: 20px; }
-    label { font-weight: bold; }
-    button { margin-top: 10px; padding: 12px; font-size: 18px; width: 100%; }
-    iframe { width: 100%; height: 450px; border: none; display: none; }
-    #registros div { 
-        background:#f0f0f0; padding:10px; margin-top:10px; border-radius:8px; 
+    input, select { width: 100%; padding: 10px; font-size: 18px; margin-top: 5px; }
+    button { width: 100%; padding: 12px; margin-top: 15px; font-size: 18px; }
+    #scanner-container { 
+        width: 100%; 
+        height: 300px; 
+        border: 2px solid #444; 
+        margin-top: 15px; 
+        display: none; 
+        position: relative;
+    }
+    #scanner-container video {
+        width: 100%; 
+        height: 100%; 
+        object-fit: cover;
     }
 </style>
+
 </head>
 <body>
 
 <h2>📦 Controle de Avarias</h2>
 
 <label>Código do Produto</label>
-<input type="text" id="codigo" style="width:100%; padding:8px; font-size:18px;" placeholder="Escaneie o código">
+<input id="codigo" placeholder="Escaneie o código">
 
-<button onclick="abrirLeitor()">📷 Ler Código de Barras</button>
+<button onclick="abrirScanner()">📷 Ler Código de Barras</button>
 
-<!-- Leitor com câmera correta -->
-<iframe id="scanner"></iframe>
-
-<br><br>
+<div id="scanner-container"></div>
 
 <label>Responsabilidade</label>
-<select id="responsavel" style="width:100%; padding:8px; font-size:16px;">
+<select id="responsavel">
     <option value="">Selecione...</option>
     <option value="Whirlpool">Whirlpool</option>
     <option value="Venkon">Venkon</option>
 </select>
 
-<br><br>
-
-<label>Tipo de Avaria</label>
-<select id="tipo" style="width:100%; padding:8px; font-size:16px;">
+<label>Tipo da Avaria</label>
+<select id="tipo">
     <option value="">Selecione...</option>
     <option value="Embalagem">Embalagem</option>
     <option value="Produto">Produto</option>
 </select>
 
-<br><br>
+<button onclick="salvar()">💾 Salvar</button>
 
-<button onclick="salvarRegistro()">💾 Salvar</button>
-
-<h3>Registros Salvos</h3>
+<h3>Registros</h3>
 <div id="registros"></div>
 
 <script>
-// abre o leitor ZXing COM CÂMERA
-function abrirLeitor() {
-    const frame = document.getElementById("scanner");
+function abrirScanner() {
+    const container = document.getElementById("scanner-container");
+    container.style.display = "block";
 
-    frame.src = "https://zxing.org/w/scanner";  // ESTA É A URL CERTA DA CÂMERA
-    frame.style.display = "block";
-
-    window.addEventListener("message", function (e) {
-        if (e.data && e.data.result) {
-            document.getElementById("codigo").value = e.data.result.text;
-            frame.style.display = "none";
+    Quagga.init({
+        inputStream: {
+            type: "LiveStream",
+            target: container,
+            constraints: {
+                facingMode: "environment"  // câmera traseira
+            }
+        },
+        decoder: {
+            readers: ["code_128_reader", "code_39_reader", "ean_reader"]
         }
+    }, function(err) {
+        if (err) {
+            alert("Erro ao acessar a câmera: " + err);
+            return;
+        }
+        Quagga.start();
+    });
+
+    Quagga.onDetected(function(result) {
+        document.getElementById("codigo").value = result.codeResult.code;
+
+        Quagga.stop();
+        container.style.display = "none";
     });
 }
 
-function salvarRegistro() {
-    const codigo = document.getElementById("codigo").value;
-    const resp = document.getElementById("responsavel").value;
-    const tipo = document.getElementById("tipo").value;
+function salvar() {
+    const c = document.getElementById("codigo").value;
+    const r = document.getElementById("responsavel").value;
+    const t = document.getElementById("tipo").value;
 
-    if (!codigo || !resp || !tipo) {
-        alert("Preencha todos os campos.");
+    if (!c || !r || !t) {
+        alert("Preencha tudo!");
         return;
     }
 
-    const div = document.createElement("div");
+    let div = document.createElement("div");
+    div.style.marginTop = "10px";
     div.innerHTML = `
-        <strong>Código:</strong> ${codigo}<br>
-        <strong>Responsável:</strong> ${resp}<br>
-        <strong>Avaria:</strong> ${tipo}
+        <strong>Código:</strong> ${c}<br>
+        <strong>Responsável:</strong> ${r}<br>
+        <strong>Avaria:</strong> ${t}<br><hr>
     `;
-
     document.getElementById("registros").appendChild(div);
 
     document.getElementById("codigo").value = "";
@@ -95,5 +116,4 @@ function salvarRegistro() {
 
 </body>
 </html>
-
 

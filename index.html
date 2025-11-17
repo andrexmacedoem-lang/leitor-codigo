@@ -65,7 +65,8 @@
     <h2>Controle de Avarias</h2>
 
     <label for="codigo">Código do Produto</label>
-    <input type="text" id="codigo" placeholder="Digite ou escaneie o código" />
+    <input type="text" id="codigo" placeholder="Toque para escanear" onclick="startScanner()" />
+    <video id="preview" style="width:100%;margin-top:10px;display:none;border-radius:8px;"></video>
 
     <label for="resp">Responsabilidade</label>
     <select id="resp">
@@ -112,5 +113,8 @@
       document.getElementById("tipo").value = "";
     }
   </script>
-</body>
+<script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+<script>
+function startScanner() {
+  const preview
 </html>

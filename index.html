@@ -5,70 +5,89 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Avarias</title>
 
+<style>
+body { font-family: Arial; margin: 20px; }
+input, select, button { width: 100%; padding: 12px; font-size: 18px; margin-top: 12px; }
+#cameraBox { display: none; margin-top: 20px; }
+video { width: 100%; border: 2px solid #333; border-radius: 10px; }
+</style>
+
 <script type="module">
-import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/library@latest/esm/index.js";
+import {
+    BrowserMultiFormatReader
+} from "https://cdn.jsdelivr.net/npm/@zxing/library@latest/esm/index.js";
 
-let codeReader = new BrowserMultiFormatReader();
+let reader = new BrowserMultiFormatReader();
+let stream = null;
 
-window.abrirScanner = async function () {
-    const scannerBox = document.getElementById("scanner");
+async function iniciarCamera() {
+    const cameraBox = document.getElementById("cameraBox");
     const video = document.getElementById("video");
 
-    // Torna o vídeo visível antes de pedir permissão
-    scannerBox.style.display = "block";
+    cameraBox.style.display = "block"; // vídeo deve aparecer antes do request
 
     try {
-        const devices = await codeReader.listVideoInputDevices();
-
-        if (devices.length === 0) {
-            alert("Nenhuma câmera detectada.");
-            return;
-        }
-
-        const deviceId = devices[0].deviceId;
-
-        codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-            if (result) {
-                document.getElementById("codigo").value = result.text;
-                codeReader.reset();
-                scannerBox.style.display = "none";
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: "environment" }
             }
         });
 
-    } catch (err) {
-        alert("Erro ao acessar câmera: " + err);
+        video.srcObject = stream;
+        video.setAttribute("playsinline", true); // obrigatório no iPhone
+        video.play();
+
+        reader.decodeFromVideoDevice(null, video, (result, err) => {
+            if (result) {
+                document.getElementById("codigo").value = result.text;
+                pararCamera();
+            }
+        });
+
+    } catch (erro) {
+        alert("Erro ao acessar câmera: " + erro);
     }
-};
+}
 
-window.salvar = function () {
-    const c = document.getElementById("codigo").value;
-    const r = document.getElementById("responsavel").value;
-    const t = document.getElementById("tipo").value;
+function pararCamera() {
+    const cameraBox = document.getElementById("cameraBox");
+    cameraBox.style.display = "none";
 
-    if (!c || !r || !t) return alert("Preencha tudo.");
+    if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+    }
 
-    let bloco = document.createElement("div");
-    bloco.innerHTML = `
+    reader.reset();
+}
+
+window.iniciarCamera = iniciarCamera;
+window.pararCamera = pararCamera;
+
+window.salvar = function() {
+    let c = document.getElementById("codigo").value;
+    let r = document.getElementById("responsavel").value;
+    let t = document.getElementById("tipo").value;
+
+    if (!c || !r || !t) {
+        alert("Preencha tudo");
+        return;
+    }
+
+    let div = document.createElement("div");
+    div.innerHTML = `
         <p><strong>Código:</strong> ${c}<br>
         <strong>Responsável:</strong> ${r}<br>
         <strong>Tipo:</strong> ${t}</p>
         <hr>
     `;
-    document.getElementById("registros").appendChild(bloco);
+
+    document.getElementById("registros").appendChild(div);
 
     document.getElementById("codigo").value = "";
     document.getElementById("responsavel").value = "";
     document.getElementById("tipo").value = "";
 };
 </script>
-
-<style>
-body { font-family: Arial; margin: 20px; }
-input, select, button { width: 100%; padding: 12px; font-size: 18px; margin-top: 10px; }
-#scanner { display: none; margin-top: 15px; }
-video { width: 100%; border: 2px solid #555; border-radius: 8px; }
-</style>
-
 </head>
 <body>
 
@@ -77,10 +96,11 @@ video { width: 100%; border: 2px solid #555; border-radius: 8px; }
 <label>Código do Produto</label>
 <input id="codigo" placeholder="Escaneie o código">
 
-<button onclick="abrirScanner()">📷 Ler Código de Barras</button>
+<button onclick="iniciarCamera()">📷 Ler Código de Barras</button>
 
-<div id="scanner">
-    <video id="video" playsinline></video>
+<div id="cameraBox">
+    <video id="video"></video>
+    <button style="margin-top:10px;background:#d33;color:white" onclick="pararCamera()">❌ Fechar Câmera</button>
 </div>
 
 <label>Responsabilidade</label>
@@ -104,5 +124,6 @@ video { width: 100%; border: 2px solid #555; border-radius: 8px; }
 
 </body>
 </html>
+
 
 

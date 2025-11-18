@@ -6,101 +6,98 @@
 <title>Controle de Avarias</title>
 
 <style>
-body { font-family: Arial; margin: 20px; }
-input, select, button { width: 100%; padding: 12px; font-size: 18px; margin-top: 12px; }
-#cameraBox { display: none; margin-top: 20px; }
-video { width: 100%; border: 2px solid #333; border-radius: 10px; }
+    body { font-family: Arial; padding: 20px; }
+    input, select, button {
+        width: 100%; padding: 12px; margin: 8px 0; font-size: 18px;
+    }
+    #camera-area { display: none; }
+    #camera { width: 100%; border-radius: 10px; }
+    #registros div { padding: 10px; border: 1px solid #ccc; margin-top: 10px; }
 </style>
 
-<script type="module">
-import {
-    BrowserMultiFormatReader
-} from "https://cdn.jsdelivr.net/npm/@zxing/library@latest/esm/index.js";
+<!-- CARREGA QUAGGAJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
-let reader = new BrowserMultiFormatReader();
-let stream = null;
+<script>
+function iniciarLeitura() {
+    document.getElementById("camera-area").style.display = "block";
 
-async function iniciarCamera() {
-    const cameraBox = document.getElementById("cameraBox");
-    const video = document.getElementById("video");
-
-    cameraBox.style.display = "block"; // vídeo deve aparecer antes do request
-
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: { ideal: "environment" }
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector("#camera"), 
+            constraints: {
+                facingMode: "environment"
             }
-        });
+        },
+        decoder: {
+            readers: [
+                "code_128_reader",   // Whirlpool usa isso!
+                "ean_reader",
+                "ean_8_reader",
+                "code_39_reader",
+                "code_93_reader",
+                "upc_reader"
+            ]
+        }
+    }, function(err) {
+        if (err) {
+            alert("Erro ao iniciar câmera: " + err);
+            return;
+        }
+        Quagga.start();
+    });
 
-        video.srcObject = stream;
-        video.setAttribute("playsinline", true); // obrigatório no iPhone
-        video.play();
-
-        reader.decodeFromVideoDevice(null, video, (result, err) => {
-            if (result) {
-                document.getElementById("codigo").value = result.text;
-                pararCamera();
-            }
-        });
-
-    } catch (erro) {
-        alert("Erro ao acessar câmera: " + erro);
-    }
+    Quagga.onDetected(function(result) {
+        let codigo = result.codeResult.code;
+        document.getElementById("codigo").value = codigo;
+        pararLeitura();
+    });
 }
 
-function pararCamera() {
-    const cameraBox = document.getElementById("cameraBox");
-    cameraBox.style.display = "none";
-
-    if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-    }
-
-    reader.reset();
+function pararLeitura() {
+    Quagga.stop();
+    document.getElementById("camera-area").style.display = "none";
 }
 
-window.iniciarCamera = iniciarCamera;
-window.pararCamera = pararCamera;
+function salvar() {
+    let codigo = document.getElementById("codigo").value;
+    let resp = document.getElementById("responsavel").value;
+    let tipo = document.getElementById("tipo").value;
 
-window.salvar = function() {
-    let c = document.getElementById("codigo").value;
-    let r = document.getElementById("responsavel").value;
-    let t = document.getElementById("tipo").value;
-
-    if (!c || !r || !t) {
-        alert("Preencha tudo");
+    if (!codigo || !resp || !tipo) {
+        alert("Preencha todos os campos.");
         return;
     }
 
-    let div = document.createElement("div");
-    div.innerHTML = `
-        <p><strong>Código:</strong> ${c}<br>
-        <strong>Responsável:</strong> ${r}<br>
-        <strong>Tipo:</strong> ${t}</p>
-        <hr>
+    let bloco = document.createElement("div");
+    bloco.innerHTML = `
+        <strong>Código:</strong> ${codigo}<br>
+        <strong>Responsável:</strong> ${resp}<br>
+        <strong>Tipo:</strong> ${tipo}
     `;
-
-    document.getElementById("registros").appendChild(div);
+    document.getElementById("registros").appendChild(bloco);
 
     document.getElementById("codigo").value = "";
     document.getElementById("responsavel").value = "";
     document.getElementById("tipo").value = "";
-};
+}
 </script>
 </head>
+
 <body>
 
 <h2>📦 Controle de Avarias</h2>
 
 <label>Código do Produto</label>
-<input id="codigo" placeholder="Escaneie o código">
+<input id="codigo" placeholder="Escaneie o código de barras">
 
-<button onclick="iniciarCamera()">📷 Ler Código de Barras</button>
+<button onclick="iniciarLeitura()">📷 Ler Código de Barras</button>
 
-<div id="cameraBox">
-    <video id="video"></video>
-    <button style="margin-top:10px;background:#d33;color:white" onclick="pararCamera()">❌ Fechar Câmera</button>
+<div id="camera-area">
+    <div id="camera"></div>
+    <button onclick="pararLeitura()" style="background:#d33;color:white;">Fechar Câmera</button>
 </div>
 
 <label>Responsabilidade</label>
@@ -119,11 +116,12 @@ window.salvar = function() {
 
 <button onclick="salvar()">💾 Salvar</button>
 
-<h3>Registros</h3>
+<h3>Registros salvos</h3>
 <div id="registros"></div>
 
 </body>
 </html>
+
 
 
 
